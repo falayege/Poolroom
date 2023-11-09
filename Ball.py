@@ -1,5 +1,3 @@
-#usr/bin/env python3
-
 import math
 import random
 import matplotlib.colors as mcolors
@@ -10,13 +8,15 @@ class Ball:
     The class Ball represents a ball on a poolroom
     A ball in defined by its position and speed in 2D
     """
-    def __init__(self, x, y, radius, vx=0, vy=0,color=None):
+    def __init__(self, x, y, radius, magnus_cst, vx=0, vy=0,color=None,omega=0):
         """Initialization of a ball with its position and speed."""
         self.x = x
         self.y = y
         self.radius = radius
         self.vx = vx
         self.vy = vy
+        self.magnus_cst = magnus_cst
+        self.omega = omega  # Angular velocity
         if color is None:
             self.color = mcolors.hsv_to_rgb([np.random.rand(), 1, 1])
         else:
@@ -27,6 +27,11 @@ class Ball:
         """Move the ball during an interval dt"""
         self.x += self.vx * dt
         self.y += self.vy * dt
+        
+        #spin 
+        magnus_effect = self.magnus_cst * self.omega
+        self.vx += magnus_effect * self.vy * dt
+        self.vy -= magnus_effect * self.vx * dt
 
     def speed(self):
         return math.sqrt(self.vx**2 + self.vy**2)
@@ -72,3 +77,15 @@ class Ball:
         self.vy = v1t * ty + v1n_after * ny
         other.vx = v2t * tx + v2n_after * nx
         other.vy = v2t * ty + v2n_after * ny
+
+        # Calculate the change in spin due to collision
+        tangential_velocity_self = -self.omega * self.radius
+        tangential_velocity_other = other.omega * other.radius
+        relative_tangential_velocity = tangential_velocity_self + tangential_velocity_other
+
+        # Assuming a simple model where the spin change is proportional to the relative tangential velocity
+        spin_change_self = relative_tangential_velocity / self.radius
+        spin_change_other = -relative_tangential_velocity / other.radius
+
+        self.omega += spin_change_self
+        other.omega += spin_change_other

@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import math
 import random
 import matplotlib.pyplot as plt
@@ -9,8 +7,10 @@ from matplotlib.animation import FuncAnimation
 import matplotlib.colors as mcolors
 import numpy as np
 import matplotlib.patches as patches
+from matplotlib.widgets import Slider, Button
 
-def visualize_pool(pool,nb_balls):
+
+def visualize_pool(pool,nb_balls,dt):
     """
     Allow the visual representation of the pool
     """
@@ -26,38 +26,56 @@ def visualize_pool(pool,nb_balls):
         hole_circle = patches.Circle((hole.x, hole.y), hole.radius, fc='black')  # 'fc' stands for fill color
         plt.gca().add_patch(hole_circle)
 
-
     # Initialize ball_to_circle dictionary
     ball_to_circle = {ball: plt.Circle((ball.x, ball.y), ball.radius, fc=ball.color) for ball in pool.balls}
     for circle in ball_to_circle.values():
         ax.add_patch(circle)
 
+    axstop = plt.axes([0.77, 0.01, 0.1, 0.07])
+    btn_stop = Button(axstop, 'Stop Game')
+
+    def stop_game(event):
+        print("Game Stopped")
+        exit()
+            
+    btn_stop.on_clicked(stop_game)
+
+
+    def update_velocity(val):
+        if pool.all_balls_stopped():
+            pool.balls[0].vx = vx_slider.val
+            pool.balls[0].vy = vy_slider.val
+
+    axcolor = 'lightgoldenrodyellow'
+    axvy = plt.axes([0.2, 0.01, 0.5, 0.03], facecolor=axcolor)
+    axvx = plt.axes([0.2, 0.05, 0.5, 0.03], facecolor=axcolor)
+    vx_slider = Slider(axvx, " White ball's speed (Vx)", -100.0, 100.0, valinit=pool.balls[0].vx)
+    vy_slider = Slider(axvy, " White ball's speed (Vy)", -100.0, 100.0, valinit=pool.balls[0].vy)
+
+    vx_slider.on_changed(update_velocity)
+    vy_slider.on_changed(update_velocity)
+
     def update(frame):
-        pool.step(0.002)
+        pool.step(dt)
+        balls_on_table = set(pool.balls)  # Convert the list of balls to a set for efficient lookup
 
-        # Update positions of balls that are still on the pool
-        for ball in pool.balls:
-            circle = ball_to_circle.get(ball, None)
-            if circle:
+        # Update positions of balls that are still on the table
+        for ball, circle in ball_to_circle.items():
+            if ball in balls_on_table:
                 circle.center = (ball.x, ball.y)
-            else:  # New ball
-                circle = plt.Circle((ball.x, ball.y), ball.radius, fc=ball.color)
-                ax.add_patch(circle)
-                ball_to_circle[ball] = circle
 
-        # Handle balls that have fallen into holes
-        balls_on_pool = set(pool.balls)
+        # Remove circles for balls that are no longer on the table
         for ball in list(ball_to_circle.keys()):
-            if ball not in balls_on_pool:  # Ball has been removed
-                ball_to_circle[ball].remove()
+            if ball not in balls_on_table:
+                ball_to_circle[ball].remove()  # Remove the circle from the plot
                 del ball_to_circle[ball]
 
+        if pool.white_ball not in ball_to_circle and pool.all_balls_stopped():
+            circle = plt.Circle((pool.white_ball.x, pool.white_ball.y), pool.white_ball.radius, fc=pool.white_ball.color)
+            ax.add_patch(circle)
+            ball_to_circle[pool.white_ball] = circle
+
+
         return ball_to_circle.values()
-
-    ani=FuncAnimation(fig, update, frames=range(200), blit=True, interval=50)  # Assuming 200 frames for illustration; adjust as needed
-    plt.draw()
-
-    # Closing the window only when the balls are all stopped
-    while not pool.all_balls_stopped():
-        plt.pause(1)
-    plt.close()
+    ani = FuncAnimation(fig, update, blit=True, interval=50, cache_frame_data=False)
+    plt.show()

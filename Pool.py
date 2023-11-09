@@ -1,4 +1,3 @@
-#usr/bin/env python3
 import math 
 from Ball import Ball
 from Hole import Hole
@@ -15,6 +14,9 @@ class Pool:
         self.balls = []
         self.balls_in_motion = []
         self.holes = []
+        self.white_ball = None
+        self.hide_white_ball = False
+
 
     def add_ball(self, ball: Ball) -> bool:
         """
@@ -42,29 +44,41 @@ class Pool:
             self.balls_in_motion.append(ball)
         return True
 
-    def add_rand_ball(self,radius,color=None)->bool:
+    def add_rand_ball(self,radius,magnus_cst,color=None)->bool:
         """
         Add a ball generated randomly
         If the ball can be added to the board, it's added and the method return True
         """
         x = random.uniform(radius, self.width-radius)
         y = random.uniform(radius, self.height-radius)
-        ball = Ball(x, y, radius,0,0,color) 
+        ball = Ball(x, y, radius,magnus_cst,0,0,color) 
         return(self.add_ball(ball))
     
-    def add_white_black_balls(self,radius):
+    def add_white_black_balls(self,radius,magnus_cst):
         """
         Add the two balls of pool the black and the white
         """
-        while not(self.add_rand_ball(radius,'white')):
+        while not(self.add_rand_ball(radius,magnus_cst,'white')):
             pass
-        while not(self.add_rand_ball(radius,'black')):
+        self.white_ball = self.balls[0]
+        while not(self.add_rand_ball(radius,magnus_cst,'black')):
             pass
 
 
-    def remove_ball(self,ball: Ball):
+    def remove_ball(self, ball: Ball):
         "Remove a ball"
+        ball.vx = 0
+        ball.vy = 0
         if ball in self.balls:
+            if ball is self.white_ball:  # If the removed ball is the white ball
+                self.hide_white_ball = True
+                # Display a banner for the white ball
+                plt.gcf().text(0.5, 0.5, 'White ball potted!', 
+                            horizontalalignment='center', verticalalignment='center', 
+                            fontsize=14, color='white', bbox=dict(facecolor='red', alpha=0.8))
+                plt.pause(1)  # Display the message for 1 second
+                plt.gcf().texts.clear()  # Clear the text
+                plt.draw()  # Redraw the current figure to update the display
             self.balls.remove(ball)
         if ball in self.balls_in_motion:
             self.balls_in_motion.remove(ball)
@@ -111,13 +125,20 @@ class Pool:
             if self.ball_in_hole(ball):
                 if isinstance(ball.color,str):
                     if ball.color == 'black':
+                        # Instead of printing to the console and exiting, display a message on the plot
+                        plt.text(self.width / 2, self.height / 2, 'Game Over! Black ball fell into a hole.', 
+                                horizontalalignment='center', verticalalignment='center', 
+                                fontsize=14, bbox=dict(facecolor='red', alpha=0.5))
+                        plt.pause(2)  # Pause to display the message before closing
+                        plt.close()
                         print("Game Lost! Black ball fell into a hole.")
-                        exit()  # or restart the game or any other logic you want
+                        exit()
                     elif ball.color == 'white':
-                        ball.x = random.uniform(ball.radius, self.width-ball.radius)
-                        ball.y = random.uniform(ball.radius, self.height-ball.radius)
-                        ball.vx = 0
+                        ball.x = random.uniform(ball.radius, self.width - ball.radius)  # Reset position
+                        ball.y = random.uniform(ball.radius, self.height - ball.radius)
+                        ball.vx = 0  # Reset velocity
                         ball.vy = 0
+                        self.remove_ball(ball)  # Remove the white ball from the game
                     continue
                 else:
                     self.remove_ball(ball)
@@ -161,3 +182,10 @@ class Pool:
             
         # Update the list of balls in motion
         self.balls_in_motion = list(update_balls_in_motion)
+
+        if self.all_balls_stopped():
+        #If the white ball should be added back into the game - once fallen in a hole
+            if self.hide_white_ball:
+                self.balls.insert(0,self.white_ball) #insert the white ball at its position
+                self.hide_white_ball = False
+                self.balls_in_motion.append(self.white_ball)
