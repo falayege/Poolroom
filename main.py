@@ -19,7 +19,7 @@ if __name__ == '__main__':
     radius_hole = .08 #radius for the holes
 
     #VARIABLES BALLS
-    nb_balls = 14 #the black and white are in supplement
+    nb_balls = 70 #the black and white are in supplement
     radius = .05 #radius of the balls
     magnus_cst = .1 #constant for the spin (Magnus effect)
 
@@ -32,7 +32,7 @@ if __name__ == '__main__':
     nb_balls_added = 0
 
     #Construction of the poolroom
-    pool = Pool(pool_x,pool_y, friction,friction_edge) #size of a billard pool
+    pool = Pool(pool_x,pool_y, friction,friction_edge,radius) #size of a billard pool
     pool.add_usual_holes(radius_hole)
     pool.add_white_black_balls(radius,magnus_cst)
 

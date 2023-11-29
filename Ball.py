@@ -17,6 +17,8 @@ class Ball:
         self.vy = vy
         self.magnus_cst = magnus_cst
         self.omega = omega  # Angular velocity
+        self.grid_cel = None
+        self.marker_angle = 0 #initial angle of the marker
         if color is None:
             self.color = mcolors.hsv_to_rgb([np.random.rand(), 1, 1])
         else:
