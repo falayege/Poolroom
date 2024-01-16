@@ -45,49 +45,78 @@ class Ball:
         self.vx *= friction_edge
         self.vy -= 2 * dot * normal_y
         self.vy *= friction_edge
-
+    
     def collide(self, other):
-        """Handle collision with another ball."""
-        dx = other.x - self.x
-        dy = other.y - self.y
-        distance = math.sqrt(dx**2 + dy**2)
-        overlap = self.radius + other.radius - distance
+        """
+        Handle collision with another ball other
+        Update the speed of the two balls
+        Collision between the balls is elaxtic no loss of cinetic energy
+        """
+        dx = self.x - other.x
+        dy = self.y - other.y
+        distance_pow_2 = dx**2 + dy**2
 
-        threshold = 0.005  # Smaller than the decalage in overlap
-        if distance >= self.radius + other.radius + threshold:
+        if (self.radius + other.radius)**2 < distance_pow_2: # check if collision
+            return
+
+        dvx = self.vx - other.vx
+        dvy = self.vy - other.vy
+
+        dot = dvx * dx + dvy * dy
+
+        if dot  > 0:  # for the balls not to be stuck on
             return
         
-        nx = dx / distance
-        ny = dy / distance
-        tx = -ny
-        ty = nx
+        impact = dot/distance_pow_2
+    
+        self.vx -= impact * dx
+        self.vy -= impact * dy
+        other.vx += impact * dx
+        other.vy +=  impact * dy
 
-        # Separate the overlapping balls
-        correction = (overlap+threshold) / 2.0  # Each ball will be moved away by half of the overlap to separate them
-        self.x -= correction * nx
-        self.y -= correction * ny
-        other.x += correction * nx
-        other.y += correction * ny
+        # Normalized direction vector from other to self
+        nx = dx / distance_pow_2**.5
+        ny = dy / distance_pow_2**.5
 
-        v1n = self.vx * nx + self.vy * ny
-        v1t = self.vx * tx + self.vy * ty
-        v2n = other.vx * nx + other.vy * ny
-        v2t = other.vx * tx + other.vy * ty
-        v1n_after = ((self.radius - other.radius) / (self.radius + other.radius)) * v1n + (2 * other.radius / (self.radius + other.radius)) * v2n
-        v2n_after = (2 * self.radius / (self.radius + other.radius)) * v1n + ((other.radius - self.radius) / (self.radius + other.radius)) * v2n
-        self.vx = v1t * tx + v1n_after * nx
-        self.vy = v1t * ty + v1n_after * ny
-        other.vx = v2t * tx + v2n_after * nx
-        other.vy = v2t * ty + v2n_after * ny
+        # Collision point coordinates
+        collision_x = other.x + nx * other.radius
+        collision_y = other.y + ny * other.radius
 
-        # Calculate the change in spin due to collision
-        tangential_velocity_self = -self.omega * self.radius
-        tangential_velocity_other = other.omega * other.radius
-        relative_tangential_velocity = tangential_velocity_self + tangential_velocity_other
+        # Calculate the angle of impact
+        impact_dx = collision_x - self.x
+        impact_dy = collision_y - self.y
+        impact_distance = math.sqrt(impact_dx**2 + impact_dy**2)
 
-        # Assuming a simple model where the spin change is proportional to the relative tangential velocity
-        spin_change_self = relative_tangential_velocity / self.radius
-        spin_change_other = -relative_tangential_velocity / other.radius
+        if impact_distance < 1e-6:  # Avoid division by zero
+            impact_angle = 0
+        else:
+            cos_impact_angle = (impact_dx * nx + impact_dy * ny) / impact_distance
+            cos_impact_angle = max(-1, min(1, cos_impact_angle))  # Clamping
+            impact_angle = math.acos(cos_impact_angle)
+        # Determine if it's a center hit based on the impact angle
+        threshold_angle = math.radians(10)
+        center_collision_self = impact_angle < threshold_angle
+        if not center_collision_self:
+            self.omega += dot / self.radius
 
-        self.omega += spin_change_self
-        other.omega += spin_change_other
+        other_nx = -nx 
+        other_ny = -ny
+
+        # Calculate the angle of impact for the other ball
+        other_impact_dx = collision_x - other.x
+        other_impact_dy = collision_y - other.y
+        other_impact_distance = math.sqrt(other_impact_dx**2 + other_impact_dy**2)
+
+        if other_impact_distance < 1e-6:  # Avoid division by zero
+            other_impact_angle = 0
+        else:
+            # Calculate cosine of the angle and clamp it between -1 and 1
+            cos_other_impact_angle = (other_impact_dx * other_nx + other_impact_dy * other_ny) / other_impact_distance
+            cos_other_impact_angle = max(-1, min(1, cos_other_impact_angle))  # Clamping
+
+            other_impact_angle = math.acos(cos_other_impact_angle)
+                
+        center_collision_other = other_impact_angle < threshold_angle
+
+        if not center_collision_other:
+            other.omega -= dot / other.radius

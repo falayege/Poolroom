@@ -3,6 +3,7 @@ from Ball import Ball
 from Hole import Hole
 import matplotlib.pyplot as plt
 import random
+import math
 
 class Pool:
     def __init__(self, width, height, friction, friction_edge,rad):
@@ -16,14 +17,14 @@ class Pool:
         self.holes = []
         self.white_ball = None
         self.hide_white_ball = False
-
+        self.a_f= 9.81 * self.friction
         self.speed_stop = 0.2
-        self.hinge_number = 50
+        self.rho = 0.4
+        self.C_d = 1.2
 
         #for grid method
         self.grid_size = 2 * rad  # Assuming 'radius' is the radius of the largest ball
-        self.grid = {}  # Use a dictionary for the grid
-
+        self.grid = {} 
 
 
     def add_ball(self, ball: Ball) -> bool:
@@ -54,7 +55,7 @@ class Pool:
         self.add_ball_to_grid(ball)
         return True
     
-    def add_ball_to_grid(self, ball):
+    def add_ball_to_grid(self, ball: Ball):
         """
         Add ball to grid
         """
@@ -66,7 +67,7 @@ class Pool:
         self.grid[grid_key].append(ball)
         ball.grid_cell = grid_key
 
-    def remove_ball_from_grid(self, ball):
+    def remove_ball_from_grid(self, ball: Ball):
         if ball.grid_cell in self.grid and ball in self.grid[ball.grid_cell]:
             self.grid[ball.grid_cell].remove(ball)
 
@@ -86,6 +87,7 @@ class Pool:
         """
         while not(self.add_rand_ball(radius,magnus_cst,'white')):
             pass
+        self.balls[0].omega = 100
         self.white_ball = self.balls[0]
         while not(self.add_rand_ball(radius,magnus_cst,'black')):
             pass
@@ -144,7 +146,7 @@ class Pool:
                 return False
         return True
     
-    def check_collisions(self, ball):
+    def check_collisions(self, ball: Ball):
         """Check collisions for a given ball with balls in adjacent cells and in self cell"""
         grid_row, grid_col = ball.grid_cell
         for row in range(grid_row - 1, grid_row + 2):
@@ -170,6 +172,7 @@ class Pool:
 
         for ball in self.balls_in_motion:
             self.remove_ball_from_grid(ball)
+            #ball.omega=0
             if self.ball_in_hole(ball):
                 if isinstance(ball.color,str):
                     if ball.color == 'black':
@@ -195,17 +198,21 @@ class Pool:
             self.add_ball_to_grid(ball)
             self.check_collisions(ball)
 
-            # Friction
-            norm_v = math.sqrt(ball.vx**2 + ball.vy**2)
-            if norm_v > 0:
-                fx = -self.friction * ball.vx / norm_v
-                fy = -self.friction * ball.vy / norm_v
-                ball.vx += fx * dt
-                ball.vy += fy * dt
+            # Friction pool
+            theta = math.atan2(ball.vy, ball.vx)
+            ball.vx -= self.a_f * dt * math.cos(theta)
+            ball.vy -= self.a_f * dt * math.sin(theta)
+            # Friction air 
+            v = ball.speed()
+            drag_force_magnitude = 0.5 * self.C_d * self.rho * math.pi * (ball.radius ** 2) * (v ** 2)
+            drag_force_x = drag_force_magnitude * (ball.vx / v)
+            drag_force_y = drag_force_magnitude * (ball.vy / v)
+            ball.vx -= drag_force_x * dt
+            ball.vy -= drag_force_y * dt
 
-                # If ball is still moving, add to the list of balls in motion
-                if ball.speed() > 0.2:  # Consider a threshold for "stopped"
-                    update_balls_in_motion.add(ball)
+            # If ball is still moving, add to the list of balls in motion
+            if ball.speed() > self.speed_stop:  # Consider a threshold for "stopped"
+                update_balls_in_motion.add(ball)
 
             # Rebound taking into account the ball's radius
             if ball.x - ball.radius < 0:
@@ -223,16 +230,9 @@ class Pool:
                 ball.rebound(0, -1,self.friction_edge)
 
         # Adding the balls in motion to the list
-        if len(self.balls)<self.hinge_number:
-            for ball in self.balls:
-                if ball.speed() > self.speed_stop: 
-                    update_balls_in_motion.add(ball)
-        else:
-            adjacent_cells = self.get_adjacent_cells_to_motion()
-            for cell in adjacent_cells:
-                for ball in self.grid.get(cell,[]):
-                    if ball.speed()>self.speed_stop:
-                        update_balls_in_motion.add(ball)
+        for ball in self.balls:
+            if ball.speed() > self.speed_stop: 
+                update_balls_in_motion.add(ball)
             
         # Update the list of balls in motion
         self.balls_in_motion = list(update_balls_in_motion)

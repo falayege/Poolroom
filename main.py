@@ -14,12 +14,12 @@ if __name__ == '__main__':
 
     #VARIABLES POOL
     pool_x, pool_y = 1.5, 2.8 #pool size
-    friction = 10 #friction coeff of the pool
+    friction = 1 #friction coeff of the pool
     friction_edge = .7 #between 0 and 1
     radius_hole = .08 #radius for the holes
 
     #VARIABLES BALLS
-    nb_balls = 70 #the black and white are in supplement
+    nb_balls = 2 #the black and white are in supplement
     radius = .05 #radius of the balls
     magnus_cst = .1 #constant for the spin (Magnus effect)
 

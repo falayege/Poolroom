@@ -43,19 +43,21 @@ def visualize_pool(pool,nb_balls,dt):
 
     def update_velocity(val):
         if pool.all_balls_stopped():
+            print(len(pool.balls_in_motion))
             pool.balls[0].vx = vx_slider.val
             pool.balls[0].vy = vy_slider.val
+
 
     axcolor = 'lightgoldenrodyellow'
     axvy = plt.axes([0.2, 0.01, 0.5, 0.03], facecolor=axcolor)
     axvx = plt.axes([0.2, 0.05, 0.5, 0.03], facecolor=axcolor)
     vx_slider = Slider(axvx, " White ball's speed (Vx)", -100.0, 100.0, valinit=pool.balls[0].vx)
     vy_slider = Slider(axvy, " White ball's speed (Vy)", -100.0, 100.0, valinit=pool.balls[0].vy)
-
     vx_slider.on_changed(update_velocity)
     vy_slider.on_changed(update_velocity)
-
+    
     def update(frame):
+
         pool.step(dt)
         balls_on_table = set(pool.balls)  # Convert the list of balls to a set for efficient lookup
 
@@ -63,6 +65,12 @@ def visualize_pool(pool,nb_balls,dt):
         for ball, circle in ball_to_circle.items():
             if ball in balls_on_table:
                 circle.center = (ball.x, ball.y)
+                #ball.update_marker()  # Mise à jour de la position du marqueur
+                #angle_rad = math.radians(ball.marker_angle)
+                #marker_x = ball.x + math.cos(angle_rad) * ball.radius
+                #marker_y = ball.y + math.sin(angle_rad) * ball.radius
+                #ax.plot(marker_x, marker_y, 'o', color='black', markersize=2)
+
 
         # Remove circles for balls that are no longer on the table
         for ball in list(ball_to_circle.keys()):
@@ -74,7 +82,6 @@ def visualize_pool(pool,nb_balls,dt):
             circle = plt.Circle((pool.white_ball.x, pool.white_ball.y), pool.white_ball.radius, fc=pool.white_ball.color)
             ax.add_patch(circle)
             ball_to_circle[pool.white_ball] = circle
-
 
         return ball_to_circle.values()
     ani = FuncAnimation(fig, update, blit=True, interval=50, cache_frame_data=False)
